@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidencija datuma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EEF1F5;
+    --surface: #FFFFFF;
+    --ink: #1C2430;
+    --ink-soft: #5B6472;
+    --line: #DBE1E9;
+    --amber: #C98A2C;
+    --amber-soft: #F3E3C8;
+    --teal: #3E6E67;
+    --teal-soft: #DCE9E7;
+    --font-display: 'IBM Plex Mono', monospace;
+    --font-body: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+  }
+
+  header.page-head {
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--teal);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(28px, 6vw, 38px);
+    line-height: 1.15;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    color: var(--ink-soft);
+    font-size: 15px;
+    margin: 0;
+  }
+
+  /* Stat trio */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 32px 0 48px;
+  }
+
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 14px;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: rise 0.5s ease forwards;
+  }
+  .stat:nth-child(1){ animation-delay: 0.05s; }
+  .stat:nth-child(2){ animation-delay: 0.15s; border-color: var(--amber); }
+  .stat:nth-child(3){ animation-delay: 0.25s; }
+
+  .stat-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 6px;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(22px, 5vw, 30px);
+    margin: 0;
+  }
+
+  .stat.accent .stat-value { color: var(--amber); }
+
+  /* Timeline */
+  .timeline-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .timeline-head h2 {
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .timeline-head span {
+    font-family: var(--font-display);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .status-text {
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .status-text.err { color: #B0483F; }
+
+  .refresh-btn {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--teal);
+    background: var(--teal-soft);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .refresh-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .error-box {
+    background: var(--surface);
+    border: 1px solid #E3B7B0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    display: none;
+  }
+  .error-box.show { display: block; }
+  .error-box strong { color: var(--ink); }
+
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+  }
+
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--line);
+  }
+
+  .node {
+    position: relative;
+    padding-bottom: 6px;
+    opacity: 0;
+    transform: translateX(-4px);
+    animation: rise-x 0.45s ease forwards;
+  }
+
+  .node::before {
+    content: "";
+    position: absolute;
+    left: -28px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--teal);
+  }
+
+  .node:first-child::before {
+    background: var(--amber);
+    border-color: var(--amber);
+  }
+
+  .node-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .node-date {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 15px;
+  }
+
+  .node-dow {
+    color: var(--ink-soft);
+    font-size: 12px;
+    margin-left: 8px;
+  }
+
+  .gap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 6px 2px;
+  }
+
+  .gap-bar {
+    height: 3px;
+    border-radius: 2px;
+    background: var(--teal-soft);
+  }
+
+  .gap-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    color: var(--teal);
+    white-space: nowrap;
+  }
+
+  .gap.max .gap-bar {
+    height: 5px;
+    background: var(--amber);
+  }
+
+  .gap.max .gap-label {
+    color: var(--amber);
+    font-weight: 600;
+  }
+
+  .gap.max .gap-tag {
+    font-family: var(--font-body);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-soft);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 2px;
+  }
+
+  footer {
+    margin-top: 48px;
+    color: var(--ink-soft);
+    font-size: 12px;
+    text-align: center;
+  }
+
+  @keyframes rise {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes rise-x {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stat, .node { animation: none; opacity: 1; transform: none; }
+  }
+
+  @media (max-width: 420px) {
+    .stats { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .stat { padding: 14px 10px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="page-head">
+      <p class="eyebrow">Evidencija</p>
+      <h1>Datum → Datum</h1>
+      <p class="subtitle" id="rangeSub"></p>
+    </header>
+
+    <div class="status-row">
+      <span class="status-text" id="statusText">Učitavanje...</span>
+      <button class="refresh-btn" id="refreshBtn">Osveži</button>
+    </div>
+
+    <div class="error-box" id="errorBox">
+      <strong>Nije moguće učitati podatke uživo.</strong><br>
+      Proveri da li je sheet deljen kao „Svako ko ima link – Pregledač" (Share → Anyone with the link → Viewer). Do tada je prikazan poslednji poznati snapshot.<br>
+      <span id="errorDetail" style="font-family: var(--font-display); font-size: 11px;"></span>
+    </div>
+
+    <section class="stats">
+      <div class="stat">
+        <p class="stat-label">Poslednji</p>
+        <p class="stat-value" id="statPoslednji">–</p>
+      </div>
+      <div class="stat accent">
+        <p class="stat-label">Prosek</p>
+        <p class="stat-value" id="statProsek">–</p>
+      </div>
+      <div class="stat">
+        <p class="stat-label">Najduži</p>
+        <p class="stat-value" id="statNajduzi">–</p>
+      </div>
+    </section>
+
+    <div class="timeline-head">
+      <h2>Istorija</h2>
+      <span id="countLabel"></span>
+    </div>
+
+    <div class="timeline" id="timeline"></div>
+
+    <footer>Podaci preuzeti iz Google Sheet-a · najnoviji datum na vrhu</footer>
+  </div>
+
+<script>
+  const SHEET_ID = '10hdZWvS08omG66a-kg8RIcEgu3cw1CXpjDngFMNvbao';
+  const GID = '0';
+  const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}&t=`;
+
+  // Fallback snapshot, used only if the live fetch fails.
+  const FALLBACK = {
+    dates: [
+      "2026-08-11", "2026-08-07", "2026-07-27", "2026-07-15",
+      "2026-06-30", "2026-06-24", "2026-06-08", "2026-06-01",
+      "2026-05-12", "2026-05-06", "2026-05-01"
+    ],
+    summary: { poslednji: 0, prosek: 2.75, najduzi: 20 }
+  };
+
+  const dayNames = ["ned", "pon", "uto", "sre", "čet", "pet", "sub"];
+  const monthNames = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "avg", "sep", "okt", "nov", "dec"];
+
+  function fmt(d) {
+    return `${d.getDate()}. ${monthNames[d.getMonth()]} ${d.getFullYear()}.`;
+  }
+
+  function fmtPoslednji(n) {
+    if (n === 0) return "danas";
+    if (n === 1) return "juče";
+    return n + " dana";
+  }
+
+  function parseCsvDate(s) {
+    // Google's CSV export gives dates as M/D/YYYY
+    const [m, d, y] = s.trim().split('/').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function parseCsv(text) {
+    const rows = text.trim().split('\n').map(r =>
+      r.split(',').map(c => c.replace(/^"|"$/g, '').trim())
+    );
+    rows.shift(); // drop header row
+    const dates = rows.map(r => r[0]).filter(Boolean);
+    const first = rows[0] || [];
+    const summary = {
+      poslednji: parseFloat(first[1]),
+      prosek: parseFloat(first[2]),
+      najduzi: parseFloat(first[3])
+    };
+    return { dates, summary };
+  }
+
+  function render(data) {
+    const parsed = data.dates.map(s => parseCsvDate(s));
+    const summary = data.summary;
+
+    document.getElementById('statPoslednji').textContent = fmtPoslednji(summary.poslednji);
+    document.getElementById('statProsek').textContent = summary.prosek;
+    document.getElementById('statNajduzi').textContent = summary.najduzi;
+
+    document.getElementById('rangeSub').textContent =
+      `${fmt(parsed[parsed.length - 1])} — ${fmt(parsed[0])}`;
+    document.getElementById('countLabel').textContent = `${parsed.length} unosa`;
+
+    const gaps = [];
+    for (let i = 0; i < parsed.length - 1; i++) {
+      gaps.push(Math.round((parsed[i] - parsed[i + 1]) / 86400000));
+    }
+    const maxGap = Math.max(...gaps, 1);
+
+    const timeline = document.getElementById('timeline');
+    timeline.innerHTML = '';
+    parsed.forEach((d, i) => {
+      const node = document.createElement('div');
+      node.className = 'node';
+      node.style.animationDelay = `${0.05 * i}s`;
+      node.innerHTML = `
+        <div class="node-row">
+          <span class="node-date">${fmt(d)}</span>
+          <span class="node-dow">${dayNames[d.getDay()]}</span>
+        </div>
+      `;
+      timeline.appendChild(node);
+
+      if (i < gaps.length) {
+        const isMax = gaps[i] === maxGap;
+        const gapEl = document.createElement('div');
+        gapEl.className = 'gap' + (isMax ? ' max' : '');
+        const width = 24 + (gaps[i] / maxGap) * 90;
+        gapEl.innerHTML = `
+          <div class="gap-bar" style="width:${width}px"></div>
+          <span class="gap-label">${gaps[i]} dana</span>
+          ${isMax ? '<span class="gap-tag">najduži</span>' : ''}
+        `;
+        timeline.appendChild(gapEl);
+      }
+    });
+  }
+
+  async function loadLive() {
+    const statusEl = document.getElementById('statusText');
+    const errorBox = document.getElementById('errorBox');
+    const btn = document.getElementById('refreshBtn');
+
+    btn.disabled = true;
+    statusEl.className = 'status-text';
+    statusEl.textContent = 'Učitavanje...';
+    errorBox.classList.remove('show');
+
+    try {
+      const res = await fetch(CSV_URL + Date.now());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      const data = parseCsv(text);
+      if (!data.dates.length) throw new Error('Prazan odgovor');
+
+      render(data);
+      statusEl.textContent = 'Uživo · ažurirano ' +
+        new Date().toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' });
+    } catch (err) {
+      render(FALLBACK);
+      statusEl.textContent = 'Prikazan je poslednji snimljeni snapshot';
+      statusEl.className = 'status-text err';
+      document.getElementById('errorDetail').textContent = 'Detalj: ' + err.message;
+      errorBox.classList.add('show');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', loadLive);
+  loadLive();
+</script>
+</body>
+</html>
