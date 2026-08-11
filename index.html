@@ -351,8 +351,7 @@
       "2026-08-11", "2026-08-07", "2026-07-27", "2026-07-15",
       "2026-06-30", "2026-06-24", "2026-06-08", "2026-06-01",
       "2026-05-12", "2026-05-06", "2026-05-01"
-    ],
-    summary: { poslednji: 0, prosek: 2.75, najduzi: 20 }
+    ]
   };
 
   const dayNames = ["ned", "pon", "uto", "sre", "čet", "pet", "sub"];
@@ -380,31 +379,38 @@
     );
     rows.shift(); // drop header row
     const dates = rows.map(r => r[0]).filter(Boolean);
-    const first = rows[0] || [];
-    const summary = {
-      poslednji: parseFloat(first[1]),
-      prosek: parseFloat(first[2]),
-      najduzi: parseFloat(first[3])
-    };
-    return { dates, summary };
+    return { dates };
+  }
+
+  function computeSummary(parsedDates) {
+    // parsedDates is newest-first, as in the sheet.
+    const gaps = [];
+    for (let i = 0; i < parsedDates.length - 1; i++) {
+      gaps.push(Math.round((parsedDates[i] - parsedDates[i + 1]) / 86400000));
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const poslednji = Math.round((today - parsedDates[0]) / 86400000);
+    const prosek = gaps.length
+      ? Math.round((gaps.reduce((a, b) => a + b, 0) / gaps.length) * 100) / 100
+      : 0;
+    const najduzi = gaps.length ? Math.max(...gaps) : 0;
+
+    return { poslednji, prosek, najduzi, gaps };
   }
 
   function render(data) {
     const parsed = data.dates.map(s => parseCsvDate(s));
-    const summary = data.summary;
+    const { poslednji, prosek, najduzi, gaps } = computeSummary(parsed);
 
-    document.getElementById('statPoslednji').textContent = fmtPoslednji(summary.poslednji);
-    document.getElementById('statProsek').textContent = summary.prosek;
-    document.getElementById('statNajduzi').textContent = summary.najduzi;
+    document.getElementById('statPoslednji').textContent = fmtPoslednji(poslednji);
+    document.getElementById('statProsek').textContent = prosek;
+    document.getElementById('statNajduzi').textContent = najduzi;
 
     document.getElementById('rangeSub').textContent =
       `${fmt(parsed[parsed.length - 1])} — ${fmt(parsed[0])}`;
     document.getElementById('countLabel').textContent = `${parsed.length} unosa`;
 
-    const gaps = [];
-    for (let i = 0; i < parsed.length - 1; i++) {
-      gaps.push(Math.round((parsed[i] - parsed[i + 1]) / 86400000));
-    }
     const maxGap = Math.max(...gaps, 1);
 
     const timeline = document.getElementById('timeline');
