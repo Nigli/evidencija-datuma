@@ -382,18 +382,32 @@
     return { dates };
   }
 
+  function monthsBetween(start, end) {
+    // Mirrors Google Sheets DATEDIF(start, end, "m") — complete months only.
+    let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    if (end.getDate() < start.getDate()) months--;
+    return Math.max(months, 0);
+  }
+
   function computeSummary(parsedDates) {
     // parsedDates is newest-first, as in the sheet.
     const gaps = [];
     for (let i = 0; i < parsedDates.length - 1; i++) {
-      gaps.push(Math.round((parsedDates[i] - parsedDates[i + 1]) / 86400000));
+      gaps.push(Math.abs(Math.round((parsedDates[i] - parsedDates[i + 1]) / 86400000)));
     }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // Poslednji: =TODAY() - $A$2  (A2 = most recent date)
     const poslednji = Math.round((today - parsedDates[0]) / 86400000);
-    const prosek = gaps.length
-      ? Math.round((gaps.reduce((a, b) => a + b, 0) / gaps.length) * 100) / 100
-      : 0;
+
+    // Prosek: =COUNT($A:$A) / (DATEDIF(oldest, TODAY(), "m") + 1)
+    const oldest = parsedDates[parsedDates.length - 1];
+    const months = monthsBetween(oldest, today) + 1;
+    const prosek = Math.round((parsedDates.length / months) * 100) / 100;
+
+    // Najduzi: MAX(MAP(A2:A11, A3:A12, LAMBDA(a,b, ABS(a-b))))
     const najduzi = gaps.length ? Math.max(...gaps) : 0;
 
     return { poslednji, prosek, najduzi, gaps };
