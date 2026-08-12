@@ -167,6 +167,32 @@
   .error-box.show { display: block; }
   .error-box strong { color: var(--ink); }
 
+  /* Charts */
+  .charts {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 16px 10px;
+  }
+
+  .chart-card h2 {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+
+  .chart-card svg { display: block; width: 100%; height: auto; }
+
   .timeline {
     position: relative;
     padding-left: 28px;
@@ -330,6 +356,17 @@
       </div>
     </section>
 
+    <section class="charts">
+      <div class="chart-card">
+        <h2>Razmak između unosa (dana)</h2>
+        <div id="gapChart"></div>
+      </div>
+      <div class="chart-card">
+        <h2>Unosa po mesecu</h2>
+        <div id="monthChart"></div>
+      </div>
+    </section>
+
     <div class="timeline-head">
       <h2>Istorija</h2>
       <span id="countLabel"></span>
@@ -424,6 +461,68 @@
     return { poslednji, prosek, najduzi, gaps };
   }
 
+  function renderBarChart(containerId, items) {
+    // items: [{ label, value, highlight }], left-to-right = chronological
+    const container = document.getElementById(containerId);
+    const width = 600;
+    const height = 130;
+    const padTop = 20, padBottom = 20, padSide = 4;
+    const barGap = 6;
+    const n = items.length;
+    const innerWidth = width - padSide * 2;
+    const barWidth = Math.max((innerWidth - barGap * (n - 1)) / n, 2);
+    const maxVal = Math.max(...items.map(d => d.value), 1);
+
+    let svg = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">`;
+    items.forEach((d, i) => {
+      const barH = maxVal ? (d.value / maxVal) * (height - padTop - padBottom) : 0;
+      const x = padSide + i * (barWidth + barGap);
+      const y = height - padBottom - barH;
+      const fill = d.highlight ? '#C98A2C' : '#3E6E67';
+
+      svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barH.toFixed(1)}" rx="2" fill="${fill}"></rect>`;
+      svg += `<text x="${(x + barWidth / 2).toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle" font-size="10" font-family="IBM Plex Mono, monospace" fill="#1C2430">${d.value}</text>`;
+      svg += `<text x="${(x + barWidth / 2).toFixed(1)}" y="${height - 6}" text-anchor="middle" font-size="9" font-family="IBM Plex Sans, sans-serif" fill="#5B6472">${d.label}</text>`;
+    });
+    svg += `</svg>`;
+    container.innerHTML = svg;
+  }
+
+  function renderCharts(parsedDates, gapsNewestFirst) {
+    // Gap chart: chronological order (oldest -> newest)
+    const chronoGaps = [...gapsNewestFirst].reverse();
+    const maxGap = Math.max(...chronoGaps, 1);
+    const gapItems = chronoGaps.map((g, i) => {
+      // gap i is between parsedDates (chronological) at position i and i+1
+      const chronoDates = [...parsedDates].reverse();
+      const d = chronoDates[i + 1];
+      return {
+        label: `${d.getDate()}.${d.getMonth() + 1}.`,
+        value: g,
+        highlight: g === maxGap
+      };
+    });
+    renderBarChart('gapChart', gapItems);
+
+    // Monthly count chart
+    const counts = {};
+    parsedDates.forEach(d => {
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    const monthKeys = Object.keys(counts).sort();
+    const years = new Set(monthKeys.map(k => k.split('-')[0]));
+    const maxCount = Math.max(...Object.values(counts), 1);
+    const monthItems = monthKeys.map(key => {
+      const [y, m] = key.split('-').map(Number);
+      const label = years.size > 1
+        ? `${monthNames[m - 1]} ${String(y).slice(2)}`
+        : monthNames[m - 1];
+      return { label, value: counts[key], highlight: counts[key] === maxCount };
+    });
+    renderBarChart('monthChart', monthItems);
+  }
+
   function render(data) {
     const parsed = data.dates
       .map(s => ({ raw: s, date: parseCsvDate(s) }))
@@ -451,6 +550,8 @@
     document.getElementById('countLabel').textContent = `${parsed.length} unosa`;
 
     const maxGap = Math.max(...gaps, 1);
+
+    renderCharts(parsed, gaps);
 
     const timeline = document.getElementById('timeline');
     timeline.innerHTML = '';
