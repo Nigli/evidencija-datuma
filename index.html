@@ -68,8 +68,8 @@
   /* Stat trio */
   .stats {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
     margin: 32px 0 48px;
   }
 
@@ -316,7 +316,7 @@
   }
 
   @media (max-width: 420px) {
-    .stats { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
     .stat { padding: 14px 10px; }
   }
 </style>
@@ -347,8 +347,12 @@
         <p class="stat-value" id="statPoslednji">–</p>
       </div>
       <div class="stat accent">
-        <p class="stat-label">Prosek</p>
+        <p class="stat-label">Prosek/mesec</p>
         <p class="stat-value" id="statProsek">–</p>
+      </div>
+      <div class="stat">
+        <p class="stat-label">Prosek čekanja</p>
+        <p class="stat-value" id="statProsekCekanja">–</p>
       </div>
       <div class="stat">
         <p class="stat-label">Najduži</p>
@@ -450,15 +454,20 @@
     // Poslednji: =TODAY() - $A$2  (A2 = most recent date)
     const poslednji = Math.round((today - parsedDates[0]) / 86400000);
 
-    // Prosek: =COUNT($A:$A) / (DATEDIF(oldest, TODAY(), "m") + 1)
+    // Prosek/mesec: =COUNT($A:$A) / (DATEDIF(oldest, TODAY(), "m") + 1)
     const oldest = parsedDates[parsedDates.length - 1];
     const months = monthsBetween(oldest, today) + 1;
     const prosek = Math.round((parsedDates.length / months) * 100) / 100;
 
+    // Prosek čekanja: prosečan razmak (u danima) između uzastopnih unosa
+    const prosekCekanja = gaps.length
+      ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length)
+      : 0;
+
     // Najduzi: MAX(MAP(A2:A11, A3:A12, LAMBDA(a,b, ABS(a-b))))
     const najduzi = gaps.length ? Math.max(...gaps) : 0;
 
-    return { poslednji, prosek, najduzi, gaps };
+    return { poslednji, prosek, prosekCekanja, najduzi, gaps };
   }
 
   function renderBarChart(containerId, items) {
@@ -539,10 +548,11 @@
       throw new Error('Nijedan datum nije uspešno parsiran — pogledaj konzolu (F12)');
     }
 
-    const { poslednji, prosek, najduzi, gaps } = computeSummary(parsed);
+    const { poslednji, prosek, prosekCekanja, najduzi, gaps } = computeSummary(parsed);
 
     document.getElementById('statPoslednji').textContent = fmtPoslednji(poslednji);
     document.getElementById('statProsek').textContent = prosek;
+    document.getElementById('statProsekCekanja').textContent = prosekCekanja + ' d';
     document.getElementById('statNajduzi').textContent = najduzi;
 
     document.getElementById('rangeSub').textContent =
